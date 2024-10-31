@@ -2,38 +2,41 @@ import { CapacitorSQLite } from "@capacitor-community/sqlite";
 const DB_NAME = "cap_test";
 
 const setEncryptionKey = async () => {
-  const exists = await CapacitorSQLite.isSecretStored();
-  if (!exists) {
-    await CapacitorSQLite.setEncryptionSecret({
-      passphrase: "mysecretkey",
-    });
+  try {
+    const { result } = await CapacitorSQLite.isSecretStored();
+    if (!result) {
+      await CapacitorSQLite.setEncryptionSecret({
+        passphrase: "mysecretkey",
+      });
+    }
+  } catch (error) {
+    console.error("Error setting encryption key:", error);
   }
 };
 
 export const deleteEncryptionKey = async () => {
   try {
-    const exists = await CapacitorSQLite.isSecretStored();
-    if (exists) {
+    const { result } = await CapacitorSQLite.isSecretStored();
+    if (result) {
       await CapacitorSQLite.clearEncryptionSecret();
       console.log("Encryption key deleted successfully.");
-    } else {
-      console.log("No encryption key found.");
+      return;
     }
+    console.log("No encryption key found.");
   } catch (error) {
     console.error("Failed to delete encryption key:", error);
   }
 };
 
-
 class db {
   private async openDatabase() {
     try {
+      await setEncryptionKey();
       const result = await CapacitorSQLite.checkConnectionsConsistency({
         dbNames: [DB_NAME],
         openModes: ["RW"],
       });
       if (!result || !result.result) {
-        await setEncryptionKey();
         await CapacitorSQLite.createConnection({
           database: DB_NAME,
           mode: "secret",
@@ -100,7 +103,6 @@ class db {
 
   async selectRecords() {
     const query = `SELECT * FROM users;`;
-    // console.log("query: ", query);
     try {
       await this.openDatabase();
       const result = await CapacitorSQLite.query({
